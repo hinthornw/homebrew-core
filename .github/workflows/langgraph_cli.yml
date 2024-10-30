@@ -1,0 +1,36 @@
+name: Update langgraph-cli
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create a fresh virtual environment and generate formula
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv venv
+        source .venv/bin/activate
+        uv pip install -U langgraph-cli homebrew-pypi-poet
+        poet -f langgraph-cli > Formula/l/langgraph-cli.tmp.rb
+        deactivate
+        rm -rf venv
+    - name: Replace description and test
+      run: |
+        source .venv/bin/activate
+        python .github/workflows/scripts/cleanup_lg.py
+        cat Formula/l/langgraph-cli.rb
+    - name: Commit and push
+      run: |-
+        git config user.name "Automated"
+        git config user.email "actions@users.noreply.github.com"
+        git add -A
+        timestamp=$(date -u)
+        git commit -m "Update langgraph-cli: ${timestamp}" || exit 0
+        git pull --rebase
+        git push
